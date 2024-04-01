@@ -1,5 +1,5 @@
 resource "aws_lb" "three_tier_lb" {
-  name = "three_tier_lb"
+  name = "three-tier-lb"
   security_groups = [var.lb_sg]
   subnets = var.public_subnets
   idle_timeout = 400
@@ -8,7 +8,7 @@ resource "aws_lb" "three_tier_lb" {
 }
 
 resource "aws_lb_target_group" "three_tier_lb_tg" {
-  name = "three_tier_lb_tg"
+  name = "lb-tg"
   port = var.port
   protocol = var.protocol
   vpc_id = var.vpc_id

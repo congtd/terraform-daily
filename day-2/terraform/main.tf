@@ -1,10 +1,8 @@
-provider "aws" {
-  region = local.location
-}
+
 
 locals {
   instance_type = "t2.micro"
-  location = "ap-northeast-1"
+  location = var.region
   env = "dev"
   vpc_cird = "10.123.0.0/16"
 }
@@ -12,7 +10,6 @@ locals {
 module "networking" {
   source = "../modules/networking"
   vpc_cird = local.vpc_cird
-  access_ip = var.access_ip
   private_subnet_count = 2
   public_subnet_count = 2
   db_subnet_group = true

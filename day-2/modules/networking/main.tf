@@ -8,9 +8,9 @@ resource "aws_vpc" "three_tier_vpc" {
   }
 }
 
-data "aws_availability_zones" "three_tier_azs" {
+# data "aws_availability_zones" "three_tier_azs" {
   
-}
+# }
 
 resource "aws_internet_gateway" "three_tier_igw" {
   vpc_id = aws_vpc.three_tier_vpc.id
@@ -28,7 +28,7 @@ resource "aws_subnet" "three_tier_public_subnets" {
     count = var.public_subnet_count
     cidr_block = "10.123.${10+count.index}.0/24"
     map_public_ip_on_launch = true
-    availability_zone = data.aws_availability_zones.three_tier_azs.name[count.index]
+    availability_zone = element(var.azs, count.index)
 
     tags = {
       "Name" = "three_tier_public_subnet_${count.index + 1}"
@@ -46,7 +46,7 @@ resource "aws_route_table" "three_tier_public_rt" {
 resource "aws_route_table_association" "three_tier_public_rt_assoc" {
   route_table_id = aws_route_table.three_tier_public_rt.id
   count = var.public_subnet_count
-  subnet_id = aws_subnet.three_tier_public_subnets.id
+  subnet_id = aws_subnet.three_tier_public_subnets[count.index].id
 }
 
 resource "aws_route" "public_subnet_rt" {
@@ -60,8 +60,8 @@ resource "aws_eip" "three_tier_eip" {
 }
 
 resource "aws_nat_gateway" "three_tier_nat_gateway" {
-    allocation_id = aws_eip.three_tier_eip.id
-    subnet_id = aws_subnet.three_tier_public_subnets.id
+  allocation_id = aws_eip.three_tier_eip.id
+  subnet_id = aws_subnet.three_tier_public_subnets[1].id
 }
 
 
@@ -69,11 +69,11 @@ resource "aws_nat_gateway" "three_tier_nat_gateway" {
 
 
 resource "aws_subnet" "three_tier_private_subnets" {
-      vpc_id = aws_vpc.three_tier_vpc.id
+    vpc_id = aws_vpc.three_tier_vpc.id
     count = var.private_subnet_count
     cidr_block = "10.123.${20+count.index}.0/24"
     map_public_ip_on_launch = false
-    availability_zone = data.aws_availability_zones.three_tier_azs.name[count.index]
+    availability_zone = element(var.azs, count.index)
 
     tags = {
       "Name" = "three_tier_private_subnets_${count.index + 1}"
@@ -92,18 +92,18 @@ resource "aws_route_table" "three_tier_private_rt" {
 resource "aws_route_table_association" "three_tier_private_rt_assoc" {
   route_table_id = aws_route_table.three_tier_private_rt.id
   count = var.private_subnet_count
-  subnet_id = aws_subnet.three_tier_private_subnets.id
+  subnet_id = aws_subnet.three_tier_private_subnets[count.index].id
 }
 
 
 # private subnet for db
 
 resource "aws_subnet" "three_tier_private_subnets_db" {
-      vpc_id = aws_vpc.three_tier_vpc.id
+    vpc_id = aws_vpc.three_tier_vpc.id
     count = var.private_subnet_count
     cidr_block = "10.123.${30+count.index}.0/24"
     map_public_ip_on_launch = false
-    availability_zone = data.aws_availability_zones.three_tier_azs.name[count.index]
+    availability_zone = element(var.azs, count.index)
 
     tags = {
       "Name" = "three_tier_private_subnets_db_${count.index + 1}"
@@ -116,19 +116,33 @@ resource "aws_security_group" "three_tier_lb_sg" {
   name = "three_tier_bastion_sg"
   vpc_id = aws_vpc.three_tier_vpc.id
 
-  ingress = {
-    from_port = 80
-    to_port = 80
-    protocol = "tcp"
-    cidr_block = ["0.0.0.0/0"]
-  }
+  ingress = [
+    {
+      description = "HTTP"
+      from_port = 80
+      to_port = 80
+      protocol = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+      ipv6_cidr_blocks = []
+      prefix_list_ids = []
+      security_groups = []
+      self = false
+    }
+  ]
 
-  egress = {
-    from_port = 0
-    to_port = 0
-    protocol = "-1"
-    cidr_block = ["0.0.0.0/0"]
-  }
+  egress = [
+    {
+      description = "for all go out traffic"
+      from_port = 0
+      to_port = 0
+      protocol = "-1"
+      cidr_blocks = ["0.0.0.0/0"]
+      ipv6_cidr_blocks=["::/0"]
+      prefix_list_ids = []
+      security_groups = []
+      self = false
+    }
+  ]
 }
 
 
@@ -138,62 +152,81 @@ resource "aws_security_group" "three_tier_bastion_sg" {
   name = "three_tier_bastion_sg"
   vpc_id = aws_vpc.three_tier_vpc.id
 
-  ingress = {
-    from_port = 22
-    to_port = 22
-    protocol = "tcp"
-    cidr_block = var.access_ip
-  }
+  ingress = [
+    {
+      from_port = 22
+      to_port = 22
+      protocol = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+      description = "HTTP"
+      ipv6_cidr_blocks = []
+      prefix_list_ids = []
+      security_groups = []
+      self = false
+    }
+  ]
 
-  egress = {
-    from_port = 0
-    to_port = 0
-    protocol = "-1"
-    cidr_block = ["0.0.0.0/0"]
-  }
+  egress = [
+    {
+      from_port = 0
+      to_port = 0
+      protocol = "-1"
+      cidr_blocks = ["0.0.0.0/0"]
+      description = "for all go out traffic"
+      ipv6_cidr_blocks=["::/0"]
+      prefix_list_ids = []
+      security_groups = []
+      self = false
+    }
+  ]
 }
 
 
 # SG FE
 
-locals {
-  ports_in_22 = [
-    22
-  ]
-  ports_in_80 = [
-    80
-  ]
-}
-
 resource "aws_security_group" "three_tier_frontend_sg" {
   name = "three_tier_frontend_sg"
   vpc_id = aws_vpc.three_tier_vpc.id
 
-  dynamic "ingress" {
-    for_each = toset(local.ports_in_22)
-    content {
-        from_port = ingress.value
-        to_port = ingress.value
-        protocol = "tcp"
-        security_groups = [aws_security_group.three_tier_bastion_sg.id]
-    }
-  }
+  ingress = [ 
+    {
+      from_port = 22
+      to_port = 22
+      protocol = "tcp"
+      cidr_blocks = []
+      description = "HTTP"
+      ipv6_cidr_blocks = []
+      prefix_list_ids = []
+      security_groups = [aws_security_group.three_tier_bastion_sg.id]
+      self = false
+    },
+    {
+      from_port = 80
+      to_port = 80
+      protocol = "tcp"
+      cidr_blocks = []
+      description = "HTTP"
+      ipv6_cidr_blocks = []
+      prefix_list_ids = []
+      security_groups = [aws_security_group.three_tier_lb_sg.id]
+      self = false
+    },
 
-  dynamic "ingress" {
-    for_each = toset(local.ports_in_80)
-    content {
-        from_port = ingress.value
-        to_port = ingress.value
-        protocol = "tcp"
-        security_groups = [aws_security_group.three_tier_lb_sg.id]
-    }
+   ]
+
+  egress = [
+    {
+      from_port = 0
+      to_port = 0
+      protocol = "-1"
+      cidr_blocks = ["0.0.0.0/0"]
+      description = "for all go out traffic"
+      ipv6_cidr_blocks=["::/0"]
+      prefix_list_ids = []
+      security_groups = []
+      self = false
   }
-  egress = {
-    from_port = 0
-    to_port = 0
-    protocol = "-1"
-    cidr_block = ["0.0.0.0/0"]
-  }
+  ]
 }
 
 
@@ -203,31 +236,45 @@ resource "aws_security_group" "three_tier_backend_sg" {
   name = "three_tier_backend_sg"
   vpc_id = aws_vpc.three_tier_vpc.id
 
-  dynamic "ingress" {
-    for_each = toset(local.ports_in_22)
-    content {
-        from_port = ingress.value
-        to_port = ingress.value
-        protocol = "tcp"
-        security_groups = [aws_security_group.three_tier_bastion_sg.id]
+  ingress = [ 
+    {
+      from_port = 22
+      to_port = 22
+      protocol = "tcp"
+      cidr_blocks = []
+      description = "HTTP"
+      ipv6_cidr_blocks = []
+      prefix_list_ids = []
+      security_groups =  [aws_security_group.three_tier_bastion_sg.id]
+      self = false
+    },
+    {
+      from_port = 80
+      to_port = 80
+      protocol = "tcp"
+      cidr_blocks = []
+      description = "HTTP"
+      ipv6_cidr_blocks = []
+      prefix_list_ids = []
+      security_groups =  [aws_security_group.three_tier_frontend_sg.id]
+      self = false
     }
-  }
+   ]
 
-  dynamic "ingress" {
-    for_each = toset(local.ports_in_80)
-    content {
-        from_port = ingress.value
-        to_port = ingress.value
-        protocol = "tcp"
-        security_groups = [aws_security_group.three_tier_frontend_sg.id]
+
+  egress = [
+    {
+      from_port = 0
+      to_port = 0
+      protocol = "-1"
+      cidr_blocks = ["0.0.0.0/0"]
+      description = "for all go out traffic"
+      ipv6_cidr_blocks=["::/0"]
+      prefix_list_ids = []
+      security_groups = []
+      self = false
     }
-  }
-  egress = {
-    from_port = 0
-    to_port = 0
-    protocol = "-1"
-    cidr_block = ["0.0.0.0/0"]
-  }
+  ]
 }
 
 
@@ -237,27 +284,32 @@ resource "aws_security_group" "three_tier_db_sg" {
   name = "three_tier_db_sg"
   vpc_id = aws_vpc.three_tier_vpc.id
 
-  # dynamic "ingress" {
-  #   for_each = toset(local.ports_in_3306)
-  #   content {
-  #       from_port = ingress.value
-  #       to_port = ingress.value
-  #       protocol = "tcp"
-  #       security_groups = [aws_security_group.three_tier_backend_sg.id]
-  #   }
-  # }
-  ingress = {
-    from_port = 3306
-    to_port = 3306
-    protocol = "tcp"
-    cidr_block = ["0.0.0.0/0"]
-  }
-  egress = {
-    from_port = 0
-    to_port = 0
-    protocol = "-1"
-    cidr_block = ["0.0.0.0/0"]
-  }
+  ingress = [
+    {
+      from_port = 3306
+      to_port = 3306
+      protocol = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+      description = "HTTP"
+      ipv6_cidr_blocks = []
+      prefix_list_ids = []
+      security_groups = []
+      self = false
+    }
+  ]
+  egress = [
+    {
+      from_port = 0
+      to_port = 0
+      protocol = "-1"
+      cidr_blocks = ["0.0.0.0/0"]
+      description = "for all go out traffic"
+      ipv6_cidr_blocks=["::/0"]
+      prefix_list_ids = []
+      security_groups = []
+      self = false
+    }
+  ]
 }
 
 resource "aws_db_subnet_group" "three_tier_db_subnetgroup" {

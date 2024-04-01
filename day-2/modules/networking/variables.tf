@@ -10,11 +10,14 @@ variable "private_subnet_count" {
   
 }
 
-variable "access_ip" {
-  
-}
 
 variable "db_subnet_group" {
   type = bool
   default = false
+}
+
+variable "azs" {
+ type        = list(string)
+ description = "Availability Zones"
+ default     = ["ap-northeast-1a", "ap-northeast-1b", "ap-northeast-1c"]
 }
