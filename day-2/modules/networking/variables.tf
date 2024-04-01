@@ -13,3 +13,8 @@ variable "private_subnet_count" {
 variable "access_ip" {
   
 }
+
+variable "db_subnet_group" {
+  type = bool
+  default = false
+}

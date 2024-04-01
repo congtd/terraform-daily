@@ -157,9 +157,11 @@ resource "aws_security_group" "three_tier_bastion_sg" {
 # SG FE
 
 locals {
-  ports_in = [
-    80,
+  ports_in_22 = [
     22
+  ]
+  ports_in_80 = [
+    80
   ]
 }
 
@@ -167,33 +169,103 @@ resource "aws_security_group" "three_tier_frontend_sg" {
   name = "three_tier_frontend_sg"
   vpc_id = aws_vpc.three_tier_vpc.id
 
-#   dynamic "ingress" {
-#     for_each = toset(local.ports_in)
-#     content {
-#         from_port = ingress.value
-#         to_port = ingress.value
-#         protocol = "tcp"
-#         secutiry_groups = [aws_security_group.three_tier_bastion_sg.id]
-#     }
-#   }
-
-   ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    security_groups = [aws_security_group.three_tier_bastion_sg.id]
-  }
-   ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    security_groups = [aws_security_group.three_tier_lb_sg.id]
+  dynamic "ingress" {
+    for_each = toset(local.ports_in_22)
+    content {
+        from_port = ingress.value
+        to_port = ingress.value
+        protocol = "tcp"
+        security_groups = [aws_security_group.three_tier_bastion_sg.id]
+    }
   }
 
-   egress = {
-    from_port = 80
-    to_port = 80
+  dynamic "ingress" {
+    for_each = toset(local.ports_in_80)
+    content {
+        from_port = ingress.value
+        to_port = ingress.value
+        protocol = "tcp"
+        security_groups = [aws_security_group.three_tier_lb_sg.id]
+    }
+  }
+  egress = {
+    from_port = 0
+    to_port = 0
     protocol = "-1"
-    secutiry_groups = [aws_security_group.three_tier_lb_sg.id]
+    cidr_block = ["0.0.0.0/0"]
+  }
+}
+
+
+# SG BE
+
+resource "aws_security_group" "three_tier_backend_sg" {
+  name = "three_tier_backend_sg"
+  vpc_id = aws_vpc.three_tier_vpc.id
+
+  dynamic "ingress" {
+    for_each = toset(local.ports_in_22)
+    content {
+        from_port = ingress.value
+        to_port = ingress.value
+        protocol = "tcp"
+        security_groups = [aws_security_group.three_tier_bastion_sg.id]
+    }
+  }
+
+  dynamic "ingress" {
+    for_each = toset(local.ports_in_80)
+    content {
+        from_port = ingress.value
+        to_port = ingress.value
+        protocol = "tcp"
+        security_groups = [aws_security_group.three_tier_frontend_sg.id]
+    }
+  }
+  egress = {
+    from_port = 0
+    to_port = 0
+    protocol = "-1"
+    cidr_block = ["0.0.0.0/0"]
+  }
+}
+
+
+# SG DB
+
+resource "aws_security_group" "three_tier_db_sg" {
+  name = "three_tier_db_sg"
+  vpc_id = aws_vpc.three_tier_vpc.id
+
+  # dynamic "ingress" {
+  #   for_each = toset(local.ports_in_3306)
+  #   content {
+  #       from_port = ingress.value
+  #       to_port = ingress.value
+  #       protocol = "tcp"
+  #       security_groups = [aws_security_group.three_tier_backend_sg.id]
+  #   }
+  # }
+  ingress = {
+    from_port = 3306
+    to_port = 3306
+    protocol = "tcp"
+    cidr_block = ["0.0.0.0/0"]
+  }
+  egress = {
+    from_port = 0
+    to_port = 0
+    protocol = "-1"
+    cidr_block = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_db_subnet_group" "three_tier_db_subnetgroup" {
+  count = var.db_subnet_group == true ? 1 : 0
+  name = "three_tier_db_subnetgroup"
+  subnet_ids = [aws_subnet.three_tier_private_subnets_db[0].id, aws_subnet.three_tier_private_subnets_db[1].id]
+
+  tags = {
+    "Name" = "three_tier_db_subnetgroup"
   }
 }

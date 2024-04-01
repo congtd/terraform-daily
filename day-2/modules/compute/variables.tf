@@ -29,3 +29,7 @@ variable "backend_app_sg" {
 variable "private_subnets" {
   
 }
+
+variable "ssh_key" {
+  
+}

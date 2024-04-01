@@ -21,7 +21,8 @@ resource "aws_lb_target_group" "three_tier_lb_tg" {
 
 resource "aws_lb_listener" "three_tier_lb_listener" {
   load_balancer_arn = aws_lb.three_tier_lb.arn
-
+  port = var.port
+  protocol = var.protocol
   default_action {
     type = "forward"
     target_group_arn = aws_lb_target_group.three_tier_lb_tg.arn
