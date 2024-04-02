@@ -1,30 +1,30 @@
 resource "aws_lb" "three_tier_lb" {
-  name = "three-tier-lb"
+  name            = "three-tier-lb"
   security_groups = [var.lb_sg]
-  subnets = var.public_subnets
-  idle_timeout = 400
+  subnets         = var.public_subnets
+  idle_timeout    = 400
 
-  depends_on = [ var.app_sg ]
+  depends_on = [var.app_sg]
 }
 
 resource "aws_lb_target_group" "three_tier_lb_tg" {
-  name = "lb-tg"
-  port = var.port
+  name     = var.lb_target_group_name
+  port     = var.port
   protocol = var.protocol
-  vpc_id = var.vpc_id
+  vpc_id   = var.vpc_id
 
   lifecycle {
-    ignore_changes = [ name ]
+    ignore_changes        = [name]
     create_before_destroy = true
   }
 }
 
 resource "aws_lb_listener" "three_tier_lb_listener" {
   load_balancer_arn = aws_lb.three_tier_lb.arn
-  port = var.port
-  protocol = var.protocol
+  port              = var.port
+  protocol          = var.protocol
   default_action {
-    type = "forward"
+    type             = "forward"
     target_group_arn = aws_lb_target_group.three_tier_lb_tg.arn
   }
 }

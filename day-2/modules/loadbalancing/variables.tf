@@ -21,3 +21,7 @@ variable "protocol" {
 variable "vpc_id" {
   
 }
+
+variable "lb_target_group_name" {
+  
+}

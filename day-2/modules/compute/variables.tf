@@ -33,3 +33,11 @@ variable "private_subnets" {
 variable "ssh_key" {
   
 }
+
+variable "vpc_id" {
+  
+}
+
+variable "lb_tg" {
+  
+}
