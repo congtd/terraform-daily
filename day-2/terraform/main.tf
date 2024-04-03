@@ -21,7 +21,6 @@ module "compute" {
   ssh_key         = "testkey"
   lb_tg_name      = module.load_balancing.lb_tg_name
   lb_tg           = module.load_balancing.lb_tg_arn
-  key_name        = "three_tier_key"
   public_subnets  = module.networking.public_subnets
   private_subnets = module.networking.private_subnets
   frontend_app_sg = module.networking.frontend_app_sg
@@ -33,9 +32,9 @@ module "compute" {
 module "database" {
   source                 = "../modules/database"
   db_allocated_storage   = 10
-  db_instance_class      = "db.t2.micro"
+  db_instance_class      = "db.t3.micro"
   db_engine_version      = "8.0"
-  db_name                = "threetier-db"
+  db_name                = "gorilladb"
   db_username            = "kong"
   db_password            = "password"
   db_subnet_group_name   = module.networking.rds_db_subnet_group_id[0]

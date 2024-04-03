@@ -3,16 +3,16 @@ terraform {
 
   required_providers {
     aws = {
-      source = "hashicorp/aws"
+      source  = "hashicorp/aws"
       version = "~>5.11"
     }
   }
 
-  # backend "s3" {
-  #   bucket = "threetier-terraform-state"
-  #   key = "state/terraform.tfstate"
-  #   region = "ap-northeast-1"
-  # }
+  backend "s3" {
+    bucket = "threetier-terraform-state"
+    key    = "state/terraform.tfstate"
+    region = "ap-northeast-1"
+  }
 }
 
 provider "aws" {

@@ -9,8 +9,16 @@ resource "aws_s3_bucket_versioning" "versioning" {
   }
 }
 
+resource "aws_s3_bucket_ownership_controls" "ownership" {
+  bucket = aws_s3_bucket.terraform-state.id
+
+  rule {
+    object_ownership = "BucketOwnerPreferred"
+  }
+}
+
 resource "aws_s3_bucket_acl" "acl" {
-  depends_on = [aws_s3_bucket.terraform-state]
+  depends_on = [aws_s3_bucket_ownership_controls.ownership]
   bucket     = aws_s3_bucket.terraform-state.id
   acl        = "private"
 }
