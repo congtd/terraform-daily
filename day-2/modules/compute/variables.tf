@@ -38,3 +38,11 @@ variable "vpc_id" {
 variable "lb_tg" {
 
 }
+
+variable "user_data_fe"{
+
+}
+
+variable "user_data_be"{
+
+}

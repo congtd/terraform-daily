@@ -54,7 +54,7 @@ resource "aws_launch_template" "three_tier_app" {
   image_id               = data.aws_ssm_parameter.three_tier_ami.value
   vpc_security_group_ids = [var.frontend_app_sg]
   key_name               = aws_key_pair.generated_key.key_name
-  user_data              = filebase64("install_apache.sh")
+  user_data              = var.user_data_fe
 
   tags = {
     "Name" = "three_tier_app"
@@ -90,7 +90,7 @@ resource "aws_launch_template" "three_tier_backend" {
   vpc_security_group_ids = [var.backend_app_sg]
   key_name               = aws_key_pair.generated_key.key_name
 
-  user_data = filebase64("install_node.sh")
+  user_data = var.user_data_be
 
   tags = {
     "Name" = "three_tier_backend"

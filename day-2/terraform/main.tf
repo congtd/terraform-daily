@@ -27,6 +27,8 @@ module "compute" {
   backend_app_sg  = module.networking.backend_app_sg
   bastion_sg      = module.networking.bastion_sg
   vpc_id          = module.networking.vpc_id
+  user_data_fe = filebase64("install_apache.sh")
+  user_data_be = filebase64("install_node.sh")
 }
 
 module "database" {
